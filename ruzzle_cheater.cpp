@@ -8,82 +8,32 @@
 
 using namespace std;
 
-#define X 0
-#define Y 1
-
+// Struct to hold a point
 struct Point2D{
     int x;
     int y;
 };
 
+// Global vars
 char _fixedMap[4][4];
 Point2D _pointMap[4][4];
 
+// Function defs
 void Init(string values);
 vector<Point2D> Find(char* word);
 vector<Point2D> FindLetter(char letter);
 vector<Point2D> FindNext(vector<Point2D> pathSoFar, char* word);
 vector<Point2D> FindNextLetter(Point2D currentPos, char letter, char localMap[4][4]);
 void MoveOnPath(vector<Point2D> path);
+string StartMovement(int x, int y);
+string InterMovement(int x, int y);
+string EndMovement();
 
-
-string StartMovement(int x, int y)
-{
-    stringstream commands;
-
-    //commands << "adb shell \"";
-    commands << "sendevent /dev/input/event3 0003 57 50781;";
-    commands << "sendevent /dev/input/event3 0001 330 1;";
-    commands << "sendevent /dev/input/event3 0003 53 " << x << ";";
-    commands << "sendevent /dev/input/event3 0003 54 " << y << ";";
-    commands << "sendevent /dev/input/event3 0003 50 3;";
-    commands << "sendevent /dev/input/event3 0003 60 45;";
-    commands << "sendevent /dev/input/event3 0000 0 0;";
-
-    return commands.str();
-}
-
-string InterMovement(int x, int y)
-{
-    stringstream commands;
-
-    commands << "sendevent /dev/input/event3 0003 53 " << x << ";";
-    commands << "sendevent /dev/input/event3 0003 54 " << y << ";";
-    commands << "sendevent /dev/input/event3 0003 48 5;";
-    commands << "sendevent /dev/input/event3 0003 50 5;";
-    commands << "sendevent /dev/input/event3 0000 0 0;";
-
-    return commands.str();
-}
-
-string EndMovement()
-{
-    stringstream commands;
-
-    commands << "sendevent /dev/input/event3 0003 57 4294967295;";
-    commands << "sendevent /dev/input/event3 0001 330 0;";
-    commands << "sendevent /dev/input/event3 0000 0 0;";
-
-    return commands.str();
-}
-
-void MovementTest()
-{
-/*
-    StartMovement(150,650);
-
-    InterMovement(150,925);
-
-    InterMovement(400,925);
-
-    EndMovement();*/
-}
-
-bool myComparer (string a,string b) { return (a.size()<b.size()); }
+// this function compares two strings and sorts them
+bool myComparer (string a,string b) { return (a.size()>b.size()); }
 
 int main()
 {
-   // MovementTest();
 
     string input;
     cout << "please type your to crack key" << endl;
@@ -162,6 +112,7 @@ int main()
     return 0;
 }
 
+// Send the commands to your android phone --------------------------------------------------------------------------------------------
 void SendCommands(string comm)
 {
     stringstream commands;
@@ -171,41 +122,7 @@ void SendCommands(string comm)
     system(commands.str().c_str());
 }
 
-void MoveOnPath(vector<Point2D> path)
-{
-    stringstream commands;
-
-    for(int i = 0; i< path.size();i++)
-    {
-        if(i==0){
-            commands << StartMovement(_pointMap[path[i].x][path[i].y].y,_pointMap[path[i].x][path[i].y].x);
-
-            SendCommands(commands.str().c_str());
-            commands.str(std::string());
-        }
-        else
-        {
-             if(commands.str().size() > 800){
-                SendCommands(commands.str().c_str());
-                commands.str(std::string());
-            }
-
-            commands <<  InterMovement(_pointMap[path[i].x][path[i].y].y,_pointMap[path[i].x][path[i].y].x);
-
-        }
-        cout << "(" << path[i].x << ", " << path[i].y << ")";
-    }
-
-    SendCommands(commands.str().c_str());
-    commands.str(std::string());
-
-    commands << EndMovement();
-
-    SendCommands(commands.str().c_str());
-}
-
-
-
+// To initialize the fixed map of characters -----------------------------------------------------------------------------------------
 void Init(string values)
 {
     for(int i = 0; i < 4; i++){
@@ -215,6 +132,8 @@ void Init(string values)
         }
     }
 
+    // And initialize the coordinate map of your phone.
+    // These are the coords for a S4. (This is a big screen, so your coordinates might be different.)
     int offset_x = 650;
     int offset_y = 150;
     int span_x = 925-offset_x;
@@ -229,6 +148,7 @@ void Init(string values)
     }
 }
 
+// The 'Find' commands ----------------------------------------------------------------------------------------------------------------
 vector<Point2D> Find(char* word)
 {
     vector<Point2D> startpoints;
@@ -323,4 +243,94 @@ vector<Point2D> FindNextLetter(Point2D currentPos, char letter, char localMap[4]
     }
 
     return points;
+}
+
+
+// Movement commands ------------------------------------------------------------------------------------------------------------------
+void MoveOnPath(vector<Point2D> path)
+{
+    stringstream commands;
+
+    for(int i = 0; i< path.size();i++)
+    {
+        if(i==0){
+            commands << StartMovement(_pointMap[path[i].x][path[i].y].y,_pointMap[path[i].x][path[i].y].x);
+
+            SendCommands(commands.str().c_str());
+            commands.str(std::string());
+        }
+        else
+        {
+            // Due to limited lenght of the adb shell commands we need to send this now and then in between
+            if(commands.str().size() > 800){
+                SendCommands(commands.str().c_str());
+                commands.str(std::string());
+            }
+
+            commands <<  InterMovement(_pointMap[path[i].x][path[i].y].y,_pointMap[path[i].x][path[i].y].x);
+
+        }
+        cout << "(" << path[i].x << ", " << path[i].y << ")";
+    }
+
+    SendCommands(commands.str().c_str());
+    commands.str(std::string());
+
+    commands << EndMovement();
+
+    SendCommands(commands.str().c_str());
+}
+
+string StartMovement(int x, int y)
+{
+    stringstream commands;
+
+    // These commands start the swipe movement
+    commands << "sendevent /dev/input/event3 0003 57 50781;";
+    commands << "sendevent /dev/input/event3 0001 330 1;";
+
+    // These are the location commands
+    commands << "sendevent /dev/input/event3 0003 53 " << x << ";";
+    commands << "sendevent /dev/input/event3 0003 54 " << y << ";";
+
+    // These are related to the thickness of the push or something like that
+    commands << "sendevent /dev/input/event3 0003 50 3;";
+    commands << "sendevent /dev/input/event3 0003 60 45;";
+
+    // This is the 'end command train command'
+    commands << "sendevent /dev/input/event3 0000 0 0;";
+
+    return commands.str();
+}
+
+string InterMovement(int x, int y)
+{
+    stringstream commands;
+
+    // These are the location commands
+    commands << "sendevent /dev/input/event3 0003 53 " << x << ";";
+    commands << "sendevent /dev/input/event3 0003 54 " << y << ";";
+
+    // These are related to the thickness of the push or something like that
+    commands << "sendevent /dev/input/event3 0003 48 5;";
+    commands << "sendevent /dev/input/event3 0003 50 5;";
+
+    // This is the 'end command train command'
+    commands << "sendevent /dev/input/event3 0000 0 0;";
+
+    return commands.str();
+}
+
+string EndMovement()
+{
+    stringstream commands;
+
+    // These are the commands to finish the swipe gesture
+    commands << "sendevent /dev/input/event3 0003 57 4294967295;";
+    commands << "sendevent /dev/input/event3 0001 330 0;";
+
+    // This is the 'end command train command'
+    commands << "sendevent /dev/input/event3 0000 0 0;";
+
+    return commands.str();
 }
